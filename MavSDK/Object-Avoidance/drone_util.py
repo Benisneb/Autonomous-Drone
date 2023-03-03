@@ -25,16 +25,22 @@ class util():
         self.termination_task = asyncio.ensure_future(self.observe_is_in_air(drone, self.running_tasks))
 
     # Connect to the drone by serial / tcp / udp, verify connection, start a log file
-    async def start_connection(self, drone):
+    async def start_connection(self, drone, sim):
         try:
-            # Connect to drone using usb-to-microusb over serial port on pixhawk 4 
-            # await drone.connect(system_address="serial:///dev/ttyACM0:921600")
+            if ( (sim == None) or (sim == '0')):
+                # Connect using ./mavsdk_server hosted over 'localhost' port:50051
+                await drone.connect()
 
-            # Connect to drone using telemetry radio usb dongle
-            # await drone.connect(system_address="serial:///dev/ttyUSB0:921600")
+                # Connect to drone using usb-to-microusb over serial port on pixhawk 4 
+                # await drone.connect(system_address="serial:///dev/ttyACM0:921600")
 
-            # Connect to drone using simulator
-            await drone.connect(system_address="udp://:14540")
+                # Connect to drone using telemetry radio usb dongle
+                # await drone.connect(system_address="serial:///dev/ttyUSB0:921600")
+
+            elif (sim == '1'):
+                # Connect to drone using simulator
+                 await drone.connect(system_address="udp://:14540")
+
         except asyncio.TimeoutError:
             print(sys.stderr)
             return 
@@ -49,7 +55,7 @@ class util():
                 print(f"-- Connected to drone!")
                 break
         
-        # Start log file to be saved in current directory
+        # # Start log file to be saved in current directory
         # entries = await self.get_entries(drone)
         # for entry in entries:
         #     await self.download_log(drone, entry)
@@ -95,9 +101,10 @@ class util():
         print("-- Board level calibration finished")
 
     # Lands drone and cancels next task status
-    async def land_drone(self, drone):
+    async def land_drone(self, drone, util):
         print("-- Landing")
         await drone.action.land()
+        print(util.termination_task)
         # self.status_text_task.cancel()
 
     # Arms and prints to terminal

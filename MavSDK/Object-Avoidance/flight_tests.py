@@ -22,7 +22,7 @@ class flights():
     async def takeoff(self, drone, util):
 
         print("-- Taking off")
-        await drone.action.set_takeoff_altitude(2.5)
+        await drone.action.set_takeoff_altitude(6)
         await drone.action.takeoff()
 
         await asyncio.sleep(10)
@@ -33,20 +33,24 @@ class flights():
         # goto_location() takes Absolute MSL altitude
         # await drone.action.goto_location(47.397606, 8.543060, flying_alt, 0)
 
-        await util.land_drone(drone)
+        await util.land_drone(drone, util)
 
 
     async def altitude_control(self, drone, util):
-        await util.arm_drone(drone)
 
         print("-- Setting initial setpoint")
+        await drone.action.set_takeoff_altitude(2.5)
+        await drone.action.takeoff()
+        await asyncio.sleep(8)
+
         await drone.offboard.set_attitude(Attitude(0.0, 0.0, 0.0, 0.0))
+        await util.start_offboard(drone)
 
-        util.start_offboard(drone)
+        # await drone.offboard.PositionGlobalYaw(lat_deg, lon_deg, alt_m, yaw_deg, altitude_type)
 
-        print("-- Go up at 70% thrust")
+        # print("-- Go up at 70% thrust")
         await drone.offboard.set_attitude(Attitude(0.0, 0.0, 0.0, 0.7))
-        await asyncio.sleep(2)
+        await asyncio.sleep(4)
 
         print("-- Roll 30 at 60% thrust")
         await drone.offboard.set_attitude(Attitude(30.0, 0.0, 0.0, 0.6))
@@ -61,16 +65,15 @@ class flights():
         await asyncio.sleep(2)
 
         util.stop_offboard(drone)
-        util.land_drone(drone, util.termination_task)
+        util.land_drone(drone, util)
 
 
     async def GPS_control(self, drone, util):
-        await util.arm_drone(drone)
 
         print("-- Setting initial setpoint")
         await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, 0.0, 0.0))
 
-        util.start_offboard(drone)
+        await util.start_offboard(drone)
 
         print("-- Go 0m North, 0m East, -5m Down within local coordinate system")
         await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -5.0, 0.0))
@@ -89,16 +92,16 @@ class flights():
         await asyncio.sleep(10)
 
         util.stop_offboard(drone)
-        util.land_drone(drone, util.termination_task)
+        util.land_drone(drone, util)
 
-
+    # Moves the drone in a circle -> then circle sideways
+    # Can move the drone at different speeds
     async def velocity_control(self, drone, util):
-        await util.arm_drone(drone)
 
         print("-- Setting initial setpoint")
         await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
 
-        util.start_offboard()
+        await util.start_offboard(drone)
 
         print("-- Turn clock-wise and climb")
         await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, -1.0, 60.0))
@@ -128,17 +131,16 @@ class flights():
         await drone.offboard.set_velocity_body(VelocityBodyYawspeed(0.0, 0.0, 0.0, 0.0))
         await asyncio.sleep(8)
 
-        util.stop_offboard(drone)
-        util.land_drone(drone, util.termination_task)
+        await util.stop_offboard(drone)
+        await util.land_drone(drone, util)
 
 
     async def GPS_velocity_control(self, drone, util):
-        await util.arm_drone(drone)
 
         print("-- Setting initial setpoint")
         await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
 
-        util.start_offboard(drone)
+        await util.start_offboard(drone)
 
         print("-- Go up 2 m/s")
         await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
@@ -169,8 +171,8 @@ class flights():
         await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 1.0, 0.0))
         await asyncio.sleep(4)
 
-        util.stop_offboard(drone)
-        util.land_drone(drone, util.termination_task)
+        await util.stop_offboard(drone)
+        await util.land_drone(drone, util)
 
 
     async def schedule_mission(self, drone):
@@ -225,12 +227,10 @@ class flights():
         # print("-- Uploading mission")
         # await drone.mission.upload_mission(mission_plan)
 
-        # await util.arm_drone(drone)
-
         # print("-- Starting mission")
         # await drone.mission.start_mission()
 
-        # util.land_drone(drone, di.termination_task, util.status_text_task)
+        # await util.land_drone(drone, di.termination_task, util)
 
     async def qgroundcontrol_mission(self, drone, util):
         mission_import_data = await drone.mission_raw.import_qgroundcontrol_mission("example-mission.plan")
