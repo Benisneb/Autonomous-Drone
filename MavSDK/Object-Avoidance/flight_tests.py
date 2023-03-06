@@ -22,24 +22,35 @@ class flights():
     async def takeoff(self, drone, util):
 
         print("-- Taking off")
-        await drone.action.set_takeoff_altitude(6)
-        await drone.action.takeoff()
+        # await drone.action.set_takeoff_altitude(6)
+        # await drone.action.takeoff()
 
         await asyncio.sleep(10)
+        await util.arm_drone(drone)
 
-        # To fly drone 20m above the ground plane
-        # flying_alt = util.abs + 10.0
-        
-        # goto_location() takes Absolute MSL altitude
-        # await drone.action.goto_location(47.397606, 8.543060, flying_alt, 0)
+        print("-- Setting initial setpoint")
+        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, 0.0, util.heading))
 
+        await util.start_offboard(drone)  
+
+        print("-- Go 0m North, 0m East, -5m Down within local coordinate system")
+        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -5.0, util.heading))
+        await asyncio.sleep(10)
+
+        print("-- Go 0m North, 0m East, -5m Down within local coordinate system, turn to face East")
+        await drone.offboard.set_position_ned(PositionNedYaw(0, 0.0, -5.0, 180.0))
+        await asyncio.sleep(10)
+
+        await util.stop_offboard(drone)
         await util.land_drone(drone, util)
+
+        await asyncio.sleep(10)
 
 
     async def altitude_control(self, drone, util):
 
         print("-- Setting initial setpoint")
-        await drone.action.set_takeoff_altitude(2.5)
+        await drone.action.set_takeoff_altitude(4)
         await drone.action.takeoff()
         await asyncio.sleep(8)
 
@@ -64,8 +75,10 @@ class flights():
         await drone.offboard.set_attitude(Attitude(0.0, 0.0, 0.0, 0.6))
         await asyncio.sleep(2)
 
-        util.stop_offboard(drone)
-        util.land_drone(drone, util)
+        await util.stop_offboard(drone)
+        await util.land_drone(drone, util)
+        
+        await asyncio.sleep(10)
 
 
     async def GPS_control(self, drone, util):
@@ -91,8 +104,11 @@ class flights():
         await drone.offboard.set_position_ned(PositionNedYaw(0.0, 10.0, 0.0, 180.0))
         await asyncio.sleep(10)
 
-        util.stop_offboard(drone)
-        util.land_drone(drone, util)
+        await util.stop_offboard(drone)
+        await util.land_drone(drone, util)
+
+        await asyncio.sleep(10)
+
 
     # Moves the drone in a circle -> then circle sideways
     # Can move the drone at different speeds
@@ -134,13 +150,15 @@ class flights():
         await util.stop_offboard(drone)
         await util.land_drone(drone, util)
 
+        await asyncio.sleep(10)
+
 
     async def GPS_velocity_control(self, drone, util):
 
+        await util.start_offboard(drone)
+
         print("-- Setting initial setpoint")
         await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, 0.0, 0.0))
-
-        await util.start_offboard(drone)
 
         print("-- Go up 2 m/s")
         await drone.offboard.set_velocity_ned(VelocityNedYaw(0.0, 0.0, -2.0, 0.0))
@@ -173,6 +191,8 @@ class flights():
 
         await util.stop_offboard(drone)
         await util.land_drone(drone, util)
+
+        await asyncio.sleep(10)
 
 
     async def schedule_mission(self, drone):
@@ -231,6 +251,9 @@ class flights():
         # await drone.mission.start_mission()
 
         # await util.land_drone(drone, di.termination_task, util)
+
+        # await asyncio.sleep(10)
+
 
     async def qgroundcontrol_mission(self, drone, util):
         mission_import_data = await drone.mission_raw.import_qgroundcontrol_mission("example-mission.plan")

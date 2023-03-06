@@ -13,7 +13,9 @@ from mavsdk.offboard import (OffboardError, VelocityBodyYawspeed) # Velocity Con
 
 class util():
     def __init__(self):
-        self.abs = 0
+        self.abs = 0.0
+        self.heading = 0.0
+
 
     async def setup_info(self, drone):
         # Start parallel tasks
@@ -23,6 +25,7 @@ class util():
 
         self.running_tasks = [self.print_altitude_task, self.print_flight_mode_task]
         self.termination_task = asyncio.ensure_future(self.observe_is_in_air(drone, self.running_tasks))
+
 
     # Connect to the drone by serial / tcp / udp, verify connection, start a log file
     async def start_connection(self, drone, sim):
@@ -78,6 +81,7 @@ class util():
         except asyncio.CancelledError:
             return
 
+
     # Initializes the drone calibration sensors
     async def calibrate_drone(self, drone):
         print("-- Starting gyroscope calibration")
@@ -100,6 +104,7 @@ class util():
             print(progress_data)
         print("-- Board level calibration finished")
 
+
     # Lands drone and cancels next task status
     async def land_drone(self, drone, util):
         print("-- Landing")
@@ -107,10 +112,12 @@ class util():
         print(util.termination_task)
         # self.status_text_task.cancel()
 
+
     # Arms and prints to terminal
     async def arm_drone(self, drone):
         print("-- Arming")
         await drone.action.arm()
+
 
     # Starts offboard controls for drone movement
     async def start_offboard(self, drone):
@@ -124,6 +131,7 @@ class util():
             await drone.action.disarm()
             return
 
+
     # Ends offboard controls for drone movement
     async def stop_offboard(self, drone):
         print("-- Stopping offboard")
@@ -133,6 +141,7 @@ class util():
             print(f"Stopping offboard mode failed with error code: \
                 {error._result.result}")
             
+
     # Starts offboard controls for drone movement
     async def download_log(self, drone, entry):
         date_without_colon = entry.date.replace(":", "-")
@@ -147,12 +156,23 @@ class util():
                 previous_progress = new_progress
         print()
 
+
     # Prints entries in the log file
     async def get_entries(self, drone):
         entries = await drone.log_files.get_entries()
         for entry in entries:
             print(f"Log {entry.id} from {entry.date}")
         return entries
+    
+
+    # Find direction drone is facing
+    async def get_heading(self, drone):
+        print("Reading Heading (Yaw 0->360)...")
+        async for heading_deg in drone.telemetry.heading():
+            self.heading = heading_deg.heading_deg
+            print("-- Current heading in degrees (0 North, positive is clock-wise looking from above): {}", self.heading)
+            break
+
 
     # Calculates telemetry absolute altitude
     async def abs_altitude(self, drone):
@@ -164,8 +184,10 @@ class util():
             break
         return self.absolute_altitude
 
-    # Prints the altitude when it changes 
+
+    # Prints the altitude when it changes
     async def print_altitude(self, drone):
+
         previous_altitude = None
 
         async for position in drone.telemetry.position():
@@ -173,6 +195,7 @@ class util():
             if altitude != previous_altitude:
                 previous_altitude = altitude
                 print(f"Altitude: {altitude}")
+
 
     # Prints the flight mode when it changes 
     async def print_flight_mode(self, drone):
@@ -182,6 +205,7 @@ class util():
             if flight_mode != previous_flight_mode:
                 previous_flight_mode = flight_mode
                 print(f"Flight mode: {flight_mode}")
+
 
     # Monitors whether the drone is flying or not and returns after landing
     async def observe_is_in_air(self, drone, util):
@@ -202,6 +226,7 @@ class util():
                 # await asyncio.get_event_loop().shutdown_asyncgens()
                 # return
 
+
     # Prints the progress of the mission according to plan
     async def print_mission_progress(self, drone):
         async for mission_progress in drone.mission.mission_progress():
@@ -209,6 +234,7 @@ class util():
                 f"{mission_progress.current}/"
                 f"{mission_progress.total}")
         
+
     async def define_geofence(self, drone):    
         await asyncio.sleep(0.5)
 
@@ -227,6 +253,7 @@ class util():
 
         print("Geofence uploaded!")
 
+
     # Get the list of parameters then iterate through all int parameters
     async def print_all_params(self, drone):
         all_params = await drone.param.get_all_params()
@@ -237,16 +264,6 @@ class util():
         for param in all_params.float_params:
             print(f"{param.name}: {param.value}")
 
-    # Prints the altitude when it changes
-    async def print_altitude(self, drone):
-
-        previous_altitude = None
-
-        async for position in drone.telemetry.position():
-            altitude = round(position.relative_altitude_m)
-            if altitude != previous_altitude:
-                previous_altitude = altitude
-                print(f"Altitude: {altitude}")
 
     # Prints the flight mode when it changes
     async def print_flight_mode(self, drone):

@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import drone_util
 import flight_tests
+import time
 import tune_example
 
 from mavsdk import System
@@ -24,30 +25,34 @@ async def init_drone(sim):
     # await util.calibrate_drone()
     # await tune_example.run()
 
+
 # Initialize the drone and start a flight path 
 async def main(sim):
     await init_drone(sim)
     f = await util.abs_altitude(drone)
     print("GPS Coordinates \n\tAltitude: "+str(util.absolute_altitude)+"\n\tLatitude: "+str(util.latitude)+"\n\tLongitude: "+str(util.longitude))
 
-    #   Move drone using mavsdk commands   #
-    await util.arm_drone(drone)
+    # await util.arm_drone(drone)
     # await util.print_all_params(drone)
+    await util.get_heading(drone)
+    
     await flights.takeoff(drone, util)
-    await asyncio.sleep(10)
     # await flights.altitude_control(drone, util)
-    # await asyncio.sleep(10)
     # await flights.GPS_control(drone, util)
-    # await asyncio.sleep(10)
     # await flights.velocity_control(drone, util)
-    # await asyncio.sleep(10)
     # await flights.schedule_mission(drone, util)
     # await flights.qgroundcontrol_mission(drone, util)
+
+    util.status_text_task.cancel()
+
 
 # Launches ./mavsdk_server on port 50051 across the serial port, typically ttyACM0 on ubuntu
 def launch_mavsdk():
     try:
-        os.system("gnome-terminal -e 'bash -c \"./mavsdk_server -p 50051 serial:///dev/ttyACM0:921600; bash\" '")
+        os.system("gnome-terminal -e 'bash -c \"python3 mavlink_shell.py --baudrate 921600; bash\"'")
+        time.sleep(1)
+        os.system("gnome-terminal -e 'bash -c \"./mavsdk_server -p 50051 serial:///dev/ttyACM0:921600; bash\"'")
+        # os.system("gnome-terminal -e 'bash -c \"./mavsdk_server -p 50051 serial:///dev/ttyUSB0:921600; bash\" '")
     except:
         print("Server can't launch, check /dev/tty___ port used")
 
@@ -58,7 +63,6 @@ if __name__=="__main__":
     parser.add_argument('-s', choices=['1','0'], help='Set flag as 1 or 0 to run simulation, default is 0.')
     args = parser.parse_args()
     sim = (args.s)
-    print(sim)
 
     # Initilize the drone to look for the mav_sdk server on 'localhost':port 50051 
     #   If "--sim" is added when running program initiates simulator 
