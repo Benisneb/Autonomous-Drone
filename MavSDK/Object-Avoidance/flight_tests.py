@@ -2,8 +2,6 @@
 
 import asyncio
 
-import drone_util
-
 from mavsdk.mission import (MissionItem, MissionPlan) # Mission planning for control
 from mavsdk.offboard import (Attitude, OffboardError) # Altitude Control
 from mavsdk.offboard import (OffboardError, PositionNedYaw) # GPS Control
@@ -25,7 +23,7 @@ class flights():
         # await drone.action.set_takeoff_altitude(6)
         # await drone.action.takeoff()
 
-        await asyncio.sleep(10)
+        await asyncio.sleep(5)
         await util.arm_drone(drone)
 
         print("-- Setting initial setpoint")
@@ -33,18 +31,45 @@ class flights():
 
         await util.start_offboard(drone)  
 
-        print("-- Go 0m North, 0m East, -5m Down within local coordinate system")
-        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -5.0, util.heading))
-        await asyncio.sleep(10)
+        print("-- Go 0m North, 0m East, -5m Down within local coordinate system, facing current heading")
+        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -3.0, util.heading))
+        await asyncio.sleep(5)
 
-        print("-- Go 0m North, 0m East, -5m Down within local coordinate system, turn to face East")
-        await drone.offboard.set_position_ned(PositionNedYaw(0, 0.0, -5.0, 180.0))
-        await asyncio.sleep(10)
+        print("-- Go 0m North, 0m East, -5m Down within local coordinate system, turn to face North")
+        await drone.offboard.set_position_ned(PositionNedYaw(0, 0.0, -3.0, 0))
+        await asyncio.sleep(5)
 
         await util.stop_offboard(drone)
         await util.land_drone(drone, util)
 
-        await asyncio.sleep(10)
+        await asyncio.sleep(5)
+
+
+    async def test_LIDAR(self, drone, util, LIDAR):
+
+        print("-- Testing object avoidance using LIDAR to see obsticle")
+
+        await asyncio.sleep(5)
+        await util.arm_drone(drone)
+
+        print("-- Setting initial setpoint")
+        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, 0.0, util.heading))
+
+        await util.start_offboard(drone)  
+
+        print("-- Go 0m North, 0m East, -1m Down within local coordinate system, facing current heading")
+        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -1.0, util.heading))
+        await asyncio.sleep(5)
+
+        while (LIDAR.lidar_distance > 10):
+            print("-- Go 0m North, 0m East, -1m Down within local coordinate system, turn to face East")
+            await drone.offboard.set_position_ned(PositionNedYaw(0, 0.0, -1.0, 0))
+            await asyncio.sleep(5)
+
+        await util.stop_offboard(drone)
+        await util.land_drone(drone, util)
+
+        await asyncio.sleep(5)
 
 
     async def altitude_control(self, drone, util):

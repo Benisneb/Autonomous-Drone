@@ -9,7 +9,6 @@ from mavsdk import System
 async def run():
     drone = System()
     await drone.connect(system_address="udp://:14540")
-
     asyncio.ensure_future(observe_shell(drone))
 
     print("Waiting for drone to connect...")

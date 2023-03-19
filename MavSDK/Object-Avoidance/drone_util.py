@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 import sys
-import asyncio  
-
-from mavsdk.geofence import Point, Polygon
+import asyncio  # Asyncio allows for near concurrent processing 
+    # Mavsdk interacts with the drone through serial port USB0/1 or ACM0/1 
+    # Mavsdk.offboard allows manual altitude/thrust/tilt/GPS control over drone
+from mavsdk.geofence import Point, Polygon # Perimeter for drone
 from mavsdk.offboard import (Attitude, OffboardError) # Altitude Control
 from mavsdk.offboard import (OffboardError, PositionNedYaw) # GPS Control
 from mavsdk.offboard import (OffboardError, VelocityBodyYawspeed) # Velocity Control
-    # Asyncio allows for near concurrent processing 
-    # Mavsdk interacts with the drone through serial port USB0/1 or ACM0/1 
-    # Mavsdk.offboard allows manual altitude/thrust/tilt/GPS
+from mavsdk.camera import (CameraError, Mode)
 
 class util():
     def __init__(self):
@@ -17,31 +16,38 @@ class util():
         self.heading = 0.0
 
 
-    async def setup_info(self, drone):
-        # Start parallel tasks
+    async def setup_info(self, drone):   # , LIDAR
+        # Start parallel tasks that will be awaiting changes in the drone and track them
         self.print_mission_progress_task = asyncio.ensure_future(self.print_mission_progress(drone))
         self.print_altitude_task = asyncio.ensure_future(self.print_altitude(drone))
         self.print_flight_mode_task = asyncio.ensure_future(self.print_flight_mode(drone))
 
+        # Used to check that the drone is flying, monitors altitude & flight mode. Termination task raised if drone lands
         self.running_tasks = [self.print_altitude_task, self.print_flight_mode_task]
         self.termination_task = asyncio.ensure_future(self.observe_is_in_air(drone, self.running_tasks))
+
+        # Future variables that will be updated for px4flow camera use
+        self.print_mode_task = asyncio.ensure_future(self.print_mode(drone))
+        self.print_status_task = asyncio.ensure_future(self.print_status(drone))
+        self.print_tasks = [self.print_mode_task, self.print_status_task]
+
+        # Shell for connecting to px4
+        asyncio.ensure_future(self.observe_shell(drone))
+
+        # LIDAR Distance saved from a future LIDAR class
+        # self.lidar_distance = asyncio.ensure_future(   LIDAR.distance   )
 
 
     # Connect to the drone by serial / tcp / udp, verify connection, start a log file
     async def start_connection(self, drone, sim):
         try:
             if ( (sim == None) or (sim == '0')):
+                ## Connect to drone using usb-to-microusb over serial port on pixhawk 4 
+                # await drone.connect(system_address="serial:///dev/ttyACM0:921600") # - Or /dev/ttyUSB
                 # Connect using ./mavsdk_server hosted over 'localhost' port:50051
-                await drone.connect()
+                await drone.connect()               
 
-                # Connect to drone using usb-to-microusb over serial port on pixhawk 4 
-                # await drone.connect(system_address="serial:///dev/ttyACM0:921600")
-
-                # Connect to drone using telemetry radio usb dongle
-                # await drone.connect(system_address="serial:///dev/ttyUSB0:921600")
-
-            elif (sim == '1'):
-                # Connect to drone using simulator
+            elif (sim == '1'):      # Connect to drone using simulator if '-s 1' given as argument
                  await drone.connect(system_address="udp://:14540")
 
         except asyncio.TimeoutError:
@@ -57,7 +63,7 @@ class util():
             if state.is_connected:
                 print(f"-- Connected to drone!")
                 break
-        
+
         # # Start log file to be saved in current directory
         # entries = await self.get_entries(drone)
         # for entry in entries:
@@ -119,6 +125,12 @@ class util():
         await drone.action.arm()
 
 
+    # Arms and prints to terminal
+    async def arm_drone(self, drone):
+        print("-- Arming")
+        await drone.action.arm()
+        
+
     # Starts offboard controls for drone movement
     async def start_offboard(self, drone):
         print("-- Starting offboard")
@@ -154,7 +166,7 @@ class util():
                 sys.stdout.write(f"\r{new_progress} %")
                 sys.stdout.flush()
                 previous_progress = new_progress
-        print()
+        # print()
 
 
     # Prints entries in the log file
@@ -182,7 +194,6 @@ class util():
             self.latitude = terrain_info.latitude_deg
             self.longitude = terrain_info.longitude_deg
             break
-        return self.absolute_altitude
 
 
     # Prints the altitude when it changes
@@ -217,14 +228,6 @@ class util():
 
             if was_in_air and not is_in_air:
                 print("--landed--")
-                # for task in running_tasks:
-                #     task.cancel()
-                #     try:
-                #         await task
-                #     except asyncio.CancelledError:
-                #         pass
-                # await asyncio.get_event_loop().shutdown_asyncgens()
-                # return
 
 
     # Prints the progress of the mission according to plan
@@ -239,10 +242,13 @@ class util():
         await asyncio.sleep(0.5)
 
         # Define your geofence boundary
-        p1 = Point(self.latitude - 0.0001, self.longitude - 0.0001)
-        p2 = Point(self.latitude + 0.0001, self.longitude - 0.0001)
-        p3 = Point(self.latitude + 0.0001, self.longitude + 0.0001)
-        p4 = Point(self.latitude - 0.0001, self.longitude + 0.0001)
+        # p1 = Point(self.latitude - 0.0001, self.longitude - 0.0001)
+        # p2 = Point(self.latitude + 0.0001, self.longitude - 0.0001)
+        # p3 = Point(self.latitude + 0.0001, self.longitude + 0.0001)
+        # p4 = Point(self.latitude - 0.0001, self.longitude + 0.0001)
+
+        p2 = Point(34.2424481, -118.5244912); p3 = Point(34.2424514, -118.5234616)
+        p1 = Point(34.2411322, -118.5244574); p4 = Point(34.2411757, -118.5234774)
 
         # Create a polygon object using your points
         polygon = Polygon([p1, p2, p3, p4], Polygon.FenceType.INCLUSION)
@@ -274,7 +280,64 @@ class util():
             if flight_mode != previous_flight_mode:
                 previous_flight_mode = flight_mode
                 print(f"Flight mode: {flight_mode}")
-    
+
+
+    async def use_camera(self, drone):
+
+        print("Setting mode to 'PHOTO'")
+        try:
+            await drone.camera.set_mode(Mode.PHOTO)
+        except CameraError as error:
+            print(f"Setting mode failed with error code: {error._result.result}")
+
+        await asyncio.sleep(2)
+
+        # async for setting in drone.camera.get_setting():
+        #     print(setting)
+        
+        # f = await drone.camera.list_photos(0)
+
+        # await print(f)
+
+        async for stat in drone.camera.status():
+            print(f"Status: {stat}")
+
+        await asyncio.sleep(2)
+
+        print("Taking a photo")
+        try:
+            await drone.camera.take_photo()
+        except CameraError as error:
+            print(f"Couldn't take photo: {error._result.result}")
+
+
+    async def print_mode(self, drone):
+        async for mode in drone.camera.mode():
+            print(f"Camera mode: {mode}")
+
+
+    async def print_status(self, drone):
+        async for status in drone.camera.status():
+            print(status)
+
+
+    # Next 4 programs used to connect to px4 shell over serial connection   #   #  #
+    async def connect_shell(self,drone):                                           #
+        asyncio.get_event_loop().add_reader(sys.stdin, self.got_stdin_data, drone) #
+        print("nsh> ", end='', flush=True)                                         #
+    #                                                                              #
+    async def observe_shell(self, drone):                                          #
+        async for output in drone.shell.receive():                                 #
+            print(f"\n{output} ", end='', flush=True)                              #
+    #                                                                              #
+    def got_stdin_data(self, drone):                                               #
+        asyncio.ensure_future(self.send(drone, sys.stdin.readline()))              #
+    #                                                                              #
+    async def send(self, drone, command):                                          #
+        await drone.shell.send(command)                                            #
+    #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #  #
+
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #                       TO BE ADDED 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
