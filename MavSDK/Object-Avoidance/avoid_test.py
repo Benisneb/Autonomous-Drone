@@ -41,7 +41,6 @@ async def main(sim):
 
     await flights.takeoff(drone, util)    # - Default will fly 3 meters high, spin, and land
     
-    # util.lidar_distance = await LIDAR.do_something(drone)
     # await flights.test_LIDAR(drone, util, LIDAR) # - Testing LIDAR, flys 1 meter up, moves until detects obj
 
     # await flights.altitude_control(drone, util)
@@ -62,14 +61,17 @@ def launch_mavsdk(connection):
     print("-- Shell terminal to PX4 | Start mavsdk_server by 'serial:///dev/ttyACM0:921600'\n")
     time.sleep(1)
     try:
+        # LIDAR_CMD = ['gnome-terminal', '--', 'mpremote', 'run', 'a1', 'main.py']
         shell_CMD = ['gnome-terminal', '--', 'python3', 'mavlink_shell.py', '--baudrate', '921600']
         mavlink_CMD = ['gnome-terminal', '--', './mavsdk_server', '-p', '50051']
-        # print(mavlink_CMD); print(shell_CMD)
+        # print(LIDAR_CMD); print(mavlink_CMD); print(shell_CMD);
 
         shell_CMD.append(connection)
         mavlink_CMD.append("serial://" + connection + ":921600")
-        # print(mavlink_CMD); print(shell_CMD)
+        # print(LIDAR_CMD); print(mavlink_CMD); print(shell_CMD)
 
+        # Pi_Pico_shell = subprocess.run(args=LIDAR_CMD, shell=False, text=True, universal_newlines=True)
+        # print(Pi_Pico_shell)      # ; time.sleep(200)
         PX4_shell = subprocess.run(args=shell_CMD, shell=False, text=True, universal_newlines=True)
         time.sleep(2)
         mavlink_srvr = subprocess.run(args=mavlink_CMD, shell=False, text=True, universal_newlines=True)
@@ -109,4 +111,5 @@ if __name__=="__main__":
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
         print("\n\tEnded from keyboard interrupt: press 'ctrl + c' again to close script.\n")
+        asyncio.run(util.land_drone(drone, util))
         exit(1)

@@ -58,12 +58,15 @@ class flights():
         await util.start_offboard(drone)  
 
         print("-- Go 0m North, 0m East, -1m Down within local coordinate system, facing current heading")
-        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -1.0, util.heading))
+        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -2.0, util.heading))
         await asyncio.sleep(5)
 
-        while (LIDAR.lidar_distance > 10):
-            print("-- Go 0m North, 0m East, -1m Down within local coordinate system, turn to face East")
-            await drone.offboard.set_position_ned(PositionNedYaw(0, 0.0, -1.0, 0))
+        i = 0.0
+        print("-- Go 1m  North every 5 seconds until LIDAR detects object")
+        while ( (LIDAR.lidar_distance > 10) and (i < 5) ):
+            i = i + 0.5
+            await drone.offboard.set_position_ned(PositionNedYaw(i, 0.0, -2.0, util.heading))
+            print("-- North by {}m", i)
             await asyncio.sleep(5)
 
         await util.stop_offboard(drone)
@@ -219,65 +222,72 @@ class flights():
 
         await asyncio.sleep(10)
 
+    # Will be used to schedule how the drone can move using coordinates and camera actions as well
+    async def schedule_mission(self, drone, util):
+        print("-- Testing mission planning for flight path of drone (To Test Obj. Avoidance)")
 
-    async def schedule_mission(self, drone):
-        mission_items = []
+        mission_items = [];         latd = util.latitude;        long = util.longitude
 
-        # Need to give proper information to mission coordinates (47,8)
+        mission_items.append(MissionItem(latitude_deg           = latd,
+                                        longitude_deg           = long,
+                                        relative_altitude_m     = 3,
+                                        speed_m_s               = 1,
+                                        is_fly_through          = True,
+                                        gimbal_pitch_deg        = float('nan'),
+                                        gimbal_yaw_deg          = float('nan'),
+                                        camera_action           = MissionItem.CameraAction.NONE,
+                                        loiter_time_s           = float('nan'),
+                                        camera_photo_interval_s = float('nan'),
+                                        acceptance_radius_m     = float('nan'),
+                                        yaw_deg                 = float('nan'),
+                                        camera_photo_distance_m = float('nan')))
+        
+        mission_items.append(MissionItem(latitude_deg           = latd,
+                                        longitude_deg           = long + 0.00001,
+                                        relative_altitude_m     = 3,
+                                        speed_m_s               = 1,
+                                        is_fly_through          = True,
+                                        gimbal_pitch_deg        = float('nan'),
+                                        gimbal_yaw_deg          = float('nan'),
+                                        camera_action           = MissionItem.CameraAction.NONE,
+                                        loiter_time_s           = float('nan'),
+                                        camera_photo_interval_s = float('nan'),
+                                        acceptance_radius_m     = float('nan'),
+                                        yaw_deg                 = float('nan'),
+                                        camera_photo_distance_m = float('nan')))
 
-        # mission_items.append(MissionItem(47.398039859999997,
-        #                                 8.5455725400000002,
-        #                                 25,
-        #                                 10,
-        #                                 True,
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 MissionItem.CameraAction.NONE,
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan')))
-        # mission_items.append(MissionItem(47.398036222362471,
-        #                                 8.5450146439425509,
-        #                                 25,
-        #                                 10,
-        #                                 True,
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 MissionItem.CameraAction.NONE,
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan')))
-        # mission_items.append(MissionItem(47.397825620791885,
-        #                                 8.5450092830163271,
-        #                                 25,
-        #                                 10,
-        #                                 True,
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 MissionItem.CameraAction.NONE,
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan'),
-        #                                 float('nan')))
+        mission_items.append(MissionItem(latitude_deg           = latd,
+                                        longitude_deg           = long + 0.00001,
+                                        relative_altitude_m     = 2.5,    # Lower hover to 1 meter
+                                        speed_m_s               = 1,
+                                        is_fly_through          = True,
+                                        gimbal_pitch_deg        = float('nan'),
+                                        gimbal_yaw_deg          = float('nan'),
+                                        camera_action           = MissionItem.CameraAction.NONE,
+                                        loiter_time_s           = float('nan'),
+                                        camera_photo_interval_s = float('nan'),
+                                        acceptance_radius_m     = float('nan'),
+                                        yaw_deg                 = float('nan'),
+                                        camera_photo_distance_m = float('nan')))
 
-        # mission_plan = MissionPlan(mission_items)
+        mission_plan = MissionPlan(mission_items)
+        await drone.mission.set_return_to_launch_after_mission(True)
 
-        # await drone.mission.set_return_to_launch_after_mission(True)
+        print("-- Uploading mission")
+        p = drone.mission.upload_mission_with_progress(mission_plan)
+        print(p)
 
-        # print("-- Uploading mission")
-        # await drone.mission.upload_mission(mission_plan)
+        await asyncio.sleep(5)
+        await util.arm_drone(drone)
 
-        # print("-- Starting mission")
-        # await drone.mission.start_mission()
+        print("-- Starting mission")
+        await drone.mission.start_mission()
 
-        # await util.land_drone(drone, di.termination_task, util)
+        while await drone.mission.is_mission_finished() == False:
+            await asyncio.sleep(1)
 
-        # await asyncio.sleep(10)
+        await util.land_drone(drone, util)
+        await asyncio.sleep(10)
 
 
     async def qgroundcontrol_mission(self, drone, util):

@@ -7,6 +7,7 @@ from adafruit_display_text import label
 from pixel import Pixel
 from Lidar_Class import LIDAR
 from Servo_Class import SERVO
+from Uart_Serial import UART_SERIAL
 
 displayio.release_displays()
 
@@ -25,6 +26,8 @@ lidar.save_settings()
 
 servo1 = SERVO()
 servo1.moveToAngle(0)
+
+#serial = UART_SERIAL()
 
 # Make the display context
 splash = displayio.Group()
@@ -54,7 +57,10 @@ while True:
     if dist > 0:
         text_area.text="Ang:{} Dist:{}".format(180 - ang,dist)
         index = 90 - ((int)(ang/2)+1)
-
+        
+        print(dist)
+        #serial.message(dist)
+        
         if dist < 100: #limit in cm
             my_list[index].update(index,(49 - (int)(dist/10)), 0xFC0303) #Red
         elif dist < 250:
