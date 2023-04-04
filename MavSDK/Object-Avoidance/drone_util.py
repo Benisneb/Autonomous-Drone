@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
-import asyncio  # Asyncio allows for near concurrent processing 
+import asyncio          # Asyncio allows for near concurrent processing 
+import read_pi_pico     # Lidar connection using rpi pico GPIO pinout
     # Mavsdk interacts with the drone through serial port USB0/1 or ACM0/1 
     # Mavsdk.offboard allows manual altitude/thrust/tilt/GPS control over drone
 from mavsdk.geofence import Point, Polygon # Perimeter for drone
@@ -14,9 +15,10 @@ class util():
     def __init__(self):
         self.abs = 0.0
         self.heading = 0.0
+        self.lidar_distance = 0
         
 
-    async def setup_info(self, drone):   # , LIDAR
+    async def setup_info(self, drone, LIDAR):   # , LIDAR
         # Start parallel tasks that will be awaiting changes in the drone and track them
         self.print_mission_progress_task = asyncio.ensure_future(self.print_mission_progress(drone))
         self.print_altitude_task = asyncio.ensure_future(self.print_altitude(drone))
@@ -117,12 +119,6 @@ class util():
         await drone.action.land()
         print(util.termination_task)
         # self.status_text_task.cancel()
-
-
-    # Arms and prints to terminal
-    async def arm_drone(self, drone):
-        print("-- Arming")
-        await drone.action.arm()
 
 
     # Arms and prints to terminal

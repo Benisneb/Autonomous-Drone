@@ -45,7 +45,7 @@ class flights():
         await asyncio.sleep(5)
 
 
-    async def test_LIDAR(self, drone, util, LIDAR):
+    async def test_LIDAR(self, drone, util, lidar_read):
 
         print("-- Testing object avoidance using LIDAR to see obsticle")
 
@@ -61,17 +61,24 @@ class flights():
         await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -2.0, util.heading))
         await asyncio.sleep(5)
 
-        i = 0.0
-        print("-- Go 1m  North every 5 seconds until LIDAR detects object")
-        while ( (LIDAR.lidar_distance > 10) and (i < 5) ):
-            i = i + 0.5
+        i = 0.0;    d = await lidar_read.readline()
+        while i < 5:
+            _ = await lidar_read.readline()
+            i += 1
+
+        i = 0.0;    d = await lidar_read.readline();    line = str(d[:-2], 'utf8')
+        print("< Go 0.01m  North every 0.01 seconds until LIDAR detects object >")
+        while ( (int(line) > 10) and ((i < 2)) ):   
+            i += 0.01
+            d = await lidar_read.readline()
+            line = str(d[:-2], 'utf8')
             await drone.offboard.set_position_ned(PositionNedYaw(i, 0.0, -2.0, util.heading))
-            print("-- North by {}m", i)
-            await asyncio.sleep(5)
+            print("-- North by {0}m : \tLidar {1}cm".format('%s' % float('%.3g' % i),line))
+            await asyncio.sleep(0.01)
 
         await util.stop_offboard(drone)
         await util.land_drone(drone, util)
-
+        print('-- LIDAR detected object and stopped running')
         await asyncio.sleep(5)
 
 
