@@ -16,10 +16,13 @@ class OutputProtocol(asyncio.Protocol):
                                                     stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=1)
         return self.reader, self.writer
 
+    async def main(self):
+        r, w = await self.run()
+        while True:
+            d = await r.readline()
+            line = str(d[:-2], 'utf8')
+            print(line)
 
 if __name__=="__main__":
     connection = OutputProtocol()
-    loop = asyncio.get_event_loop()
-    transport, protocol = loop.run_until_complete(connection.run())
-    loop.run_forever()
-    loop.close()
+    asyncio.run(connection.main())
