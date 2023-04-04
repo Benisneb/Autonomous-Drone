@@ -12,7 +12,7 @@ import read_pi_pico     # Lidar connection using rpi pico GPIO pinout
 from mavsdk import System   # Mavsdk system talks to the drone using serial port USB0/1 or ACM0/1
      
 # Basic setup before flight can happen, connect drone, check telemetry & gps, play tune etc
-async def init_drone(sim, LIDAR):
+async def init_drone(sim):
     await util.start_connection(drone, sim)
     await util.check_status(drone)
     await util.setup_info(drone)
@@ -115,3 +115,5 @@ if __name__=="__main__":
         print("\n\tEnded from keyboard interrupt: press 'ctrl + c' again to close script.\n")
         asyncio.run(util.land_drone(drone, util))
         exit(1)
+    finally:
+        exit(0)

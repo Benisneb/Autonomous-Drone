@@ -18,7 +18,7 @@ class util():
         self.lidar_distance = 0
         
 
-    async def setup_info(self, drone, LIDAR):   # , LIDAR
+    async def setup_info(self, drone):   # , LIDAR
         # Start parallel tasks that will be awaiting changes in the drone and track them
         self.print_mission_progress_task = asyncio.ensure_future(self.print_mission_progress(drone))
         self.print_altitude_task = asyncio.ensure_future(self.print_altitude(drone))

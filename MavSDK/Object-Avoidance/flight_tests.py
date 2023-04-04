@@ -57,18 +57,18 @@ class flights():
 
         await util.start_offboard(drone)  
 
-        print("-- Go 0m North, 0m East, -1m Down within local coordinate system, facing current heading")
+        print("-- Go 0m North, 0m East, -2m Down within local coordinate system, facing current heading")
         await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -2.0, util.heading))
         await asyncio.sleep(5)
 
         i = 0.0;    d = await lidar_read.readline()
-        while i < 5:
+        while i < 5:        # This is loop throws away the fist 5 responses from pi pico (settings & info)
             _ = await lidar_read.readline()
             i += 1
 
         i = 0.0;    d = await lidar_read.readline();    line = str(d[:-2], 'utf8')
         print("< Go 0.01m  North every 0.01 seconds until LIDAR detects object >")
-        while ( (int(line) > 10) and ((i < 2)) ):   
+        while ( (int(line) > 91) and ((i < 5)) ):   # Move until gone 5m or detect object 3ft away
             i += 0.01
             d = await lidar_read.readline()
             line = str(d[:-2], 'utf8')
@@ -76,9 +76,24 @@ class flights():
             print("-- North by {0}m : \tLidar {1}cm".format('%s' % float('%.3g' % i),line))
             await asyncio.sleep(0.01)
 
+        # Now that loop has been escaped, move east 1.5m, north 1.5m, and move back 1.5m west (Should avoid obj in square movement)
+        print('-- LIDAR detected object and stopped moving the drone')
+
+        print("-- Go 'i'm North, 1.5m East, -2m Down within local coordinate system, facing current heading")
+        await drone.offboard.set_position_ned(PositionNedYaw(i, 1.5, -2.0, util.heading))
+        await asyncio.sleep(3)
+
+        i += 1.5
+        print("-- Go {0}m North, 1.5m East, -2m Down within local coordinate system, facing current heading".format('%s' % float('%.3g' % i)))
+        await drone.offboard.set_position_ned(PositionNedYaw(i, 1.5, -2.0, util.heading))
+        await asyncio.sleep(3)
+
+        print("-- Go {0}m North, 0m East, -2m Down within local coordinate system, facing current heading".format('%s' % float('%.3g' % i)))
+        await drone.offboard.set_position_ned(PositionNedYaw(i, 0, -2.0, util.heading))
+        await asyncio.sleep(3)
+
         await util.stop_offboard(drone)
         await util.land_drone(drone, util)
-        print('-- LIDAR detected object and stopped running')
         await asyncio.sleep(5)
 
 
