@@ -58,7 +58,7 @@ class flights():
         await util.start_offboard(drone)  
 
         print("-- Go 0m North, 0m East, -2m Down within local coordinate system, facing current heading")
-        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -2.0, util.heading))
+        await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -1.0, util.heading))
         await asyncio.sleep(5)
 
         i = 0.0;    d = await lidar_read.readline()
@@ -68,29 +68,29 @@ class flights():
 
         i = 0.0;    d = await lidar_read.readline();    line = str(d[:-2], 'utf8')
         print("< Go 0.01m  North every 0.01 seconds until LIDAR detects object >")
-        while ( (int(line) > 91) and ((i < 5)) ):   # Move until gone 5m or detect object 3ft away
-            i += 0.01
+        while ( (int(line) > 91) and ((i < 3)) ):   # Move until gone 5m or detect object 3ft away
+            i += 0.001
             d = await lidar_read.readline()
             line = str(d[:-2], 'utf8')
-            await drone.offboard.set_position_ned(PositionNedYaw(i, 0.0, -2.0, util.heading))
-            print("-- North by {0}m : \tLidar {1}cm".format('%s' % float('%.3g' % i),line))
+            await drone.offboard.set_position_ned(PositionNedYaw(i, 0.0, -1.0, util.heading))
+            print("-- North by {0}m : \tLidar {1}cm".format('%s' % float('%.4g' % i),line))
             await asyncio.sleep(0.01)
 
         # Now that loop has been escaped, move east 1.5m, north 1.5m, and move back 1.5m west (Should avoid obj in square movement)
         print('-- LIDAR detected object and stopped moving the drone')
 
         print("-- Go 'i'm North, 1.5m East, -2m Down within local coordinate system, facing current heading")
-        await drone.offboard.set_position_ned(PositionNedYaw(i, 1.5, -2.0, util.heading))
-        await asyncio.sleep(3)
+        await drone.offboard.set_position_ned(PositionNedYaw(i, 1.5, -1.0, util.heading))
+        await asyncio.sleep(5)
 
         i += 1.5
-        print("-- Go {0}m North, 1.5m East, -2m Down within local coordinate system, facing current heading".format('%s' % float('%.3g' % i)))
-        await drone.offboard.set_position_ned(PositionNedYaw(i, 1.5, -2.0, util.heading))
-        await asyncio.sleep(3)
+        print("-- Go {0}m North, 1.5m East, -2m Down within local coordinate system, facing current heading".format('%s' % float('%.4g' % i)))
+        await drone.offboard.set_position_ned(PositionNedYaw(i, 1.5, -1.0, util.heading))
+        await asyncio.sleep(5)
 
-        print("-- Go {0}m North, 0m East, -2m Down within local coordinate system, facing current heading".format('%s' % float('%.3g' % i)))
-        await drone.offboard.set_position_ned(PositionNedYaw(i, 0, -2.0, util.heading))
-        await asyncio.sleep(3)
+        print("-- Go {0}m North, 0m East, -2m Down within local coordinate system, facing current heading".format('%s' % float('%.4g' % i)))
+        await drone.offboard.set_position_ned(PositionNedYaw(i, 0, -1.0, util.heading))
+        await asyncio.sleep(5)
 
         await util.stop_offboard(drone)
         await util.land_drone(drone, util)
