@@ -50,7 +50,7 @@ class util():
                 await drone.connect()               
 
             elif (sim == '1'):      # Connect to drone using simulator if '-s 1' given as argument
-                 await drone.connect(system_address="udp://:14540")
+                await drone.connect(system_address="udp://:14540")
 
         except asyncio.TimeoutError:
             print(sys.stderr)
